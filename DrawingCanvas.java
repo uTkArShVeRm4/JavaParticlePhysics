@@ -12,12 +12,18 @@ public class DrawingCanvas extends JComponent implements Runnable{
 	int y = 100;
 	Particle[] particles;
 	int particleNumber;
+	int boxW;
+	int boxH;
+	int boxX = 10;
+	int boxY = 10;
 	Thread animationThread;
 	Random rand = new Random();
 
-	public DrawingCanvas(int w, int h, Particle[] p,int pn){
+	public DrawingCanvas(int w, int h, int bw,int bh, Particle[] p,int pn){
 		width = w;
 		height = h;
+		boxW = bw;
+		boxH = bh;
 		particles = p;
 		particleNumber = pn;
 	}
@@ -25,6 +31,9 @@ public class DrawingCanvas extends JComponent implements Runnable{
 	public void paintComponent(Graphics g){
 		Graphics2D g2D = (Graphics2D) g;
 		
+		Rectangle2D.Double r = new Rectangle2D.Double(boxX,boxY,boxW,boxH);
+		g2D.setColor(Color.black);
+		g2D.fill(r);
 
 		for(int i=0;i<particleNumber;i++){
 
@@ -78,10 +87,10 @@ public class DrawingCanvas extends JComponent implements Runnable{
 
 	public void checkWallCollision(Particle p){
 
-		if((p.pX<=0) || (p.pX+(p.radius)>=width)){
+		if((p.pX<=boxX) || (p.pX+(p.radius)>=boxX + boxW)){
 			p.vX *= -1;
 		}
-		if((p.pY<=0) || (p.pY+(2*p.radius)>=height)){
+		if((p.pY<=boxY) || (p.pY+(p.radius)>=boxY + boxH)){
 			p.vY *= -1;
 		}
 	}
