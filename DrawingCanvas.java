@@ -22,6 +22,8 @@ public class DrawingCanvas extends JComponent implements Runnable{
 	Random rand = new Random();
 	boolean running;
 
+	//collisionResolver cr = new collisionResolver();
+
 	public DrawingCanvas(int w, int h, int bw,int bh, Particle[] p,int pn){
 		width = w;
 		height = h;
@@ -35,7 +37,7 @@ public class DrawingCanvas extends JComponent implements Runnable{
 		Graphics2D g2D = (Graphics2D) g;
 		
 		Rectangle2D.Double r = new Rectangle2D.Double(boxX,boxY,boxW,boxH);
-		g2D.setColor(new Color(40,40,40));
+		g2D.setColor(Color.black);
 		g2D.fill(r);
 
 		for(int i=0;i<particleNumber;i++){
@@ -45,10 +47,12 @@ public class DrawingCanvas extends JComponent implements Runnable{
 			g2D.setColor(particles[i].color);
 			g2D.fill(circle);
 
-			// Ellipse2D.Double point = new Ellipse2D.Double(particles[i].cx,particles[i].cy,5,5);
+			Ellipse2D.Double pointc = new Ellipse2D.Double(particles[i].cx,particles[i].cy,1,1);
+			Ellipse2D.Double pointp = new Ellipse2D.Double(particles[i].px,particles[i].py,1,1);
 			// Rectangle2D.Double rect = new Rectangle2D.Double(particles[i].px,particles[i].py,particles[i].diameter,particles[i].diameter);
-			// g2D.setColor(Color.red);
-			// g2D.fill(point);
+			g2D.setColor(Color.red);
+			g2D.fill(pointc);
+			g2D.fill(pointp);
 			// g2D.fill(rect);
 			
 		}
@@ -65,7 +69,7 @@ public class DrawingCanvas extends JComponent implements Runnable{
 		running = false;
 	}
 
-	public void update(Particle[] particles){
+	public void update(){
 
 		//checks for each particle per frame
 		for(int i=0;i<particleNumber;i++){
@@ -74,20 +78,20 @@ public class DrawingCanvas extends JComponent implements Runnable{
 
 			//checking and resolving collision with rest of particles
 			for(int j=i+1;j<particleNumber;j++){
+				checkParticleCollision(particles[i],particles[j]);
 
-				if(checkParticleCollision(particles[i],particles[j])){
-					System.out.println("Collision detected "+i+" "+j);
-					particleCollisionResolution(particles[i],particles[j]);
-
-				}
 
 			//updating positions from velocities
 			particles[i].px += particles[i].vx*deltaTime;
-			particles[i].cx += particles[i].vx*deltaTime;
 			particles[i].py += particles[i].vy*deltaTime;
-			particles[i].cy += particles[i].vy*deltaTime;
+			particles[i].cx = particles[i].px + particles[i].radius;
+			particles[i].cy = particles[i].py + particles[i].radius;
+
 		}
-	
+		particles[particleNumber-1].px += particles[particleNumber-1].vx*deltaTime;
+		particles[particleNumber-1].py += particles[particleNumber-1].vy*deltaTime;
+		particles[i].cx = particles[i].px + particles[i].radius;
+		particles[i].cy = particles[i].py + particles[i].radius;
 	}
 }
 
@@ -106,7 +110,7 @@ public class DrawingCanvas extends JComponent implements Runnable{
 			lastTime = currentTime;
 
 			if(delta>=1){
-				update(particles);
+				update();
 				repaint();
 				delta--;
 			}
@@ -115,6 +119,8 @@ public class DrawingCanvas extends JComponent implements Runnable{
 	}
 
 	public void checkWallCollision(Particle p){
+
+		p.lastCollision = p;
 
 		if(p.px<=boxX){
 			p.px = boxX;
@@ -134,6 +140,8 @@ public class DrawingCanvas extends JComponent implements Runnable{
 			p.py = boxY + boxH - p.diameter;
 			p.vy *= -1;
 		}
+
+		p.calcColor();
 	}
 
 
@@ -145,6 +153,10 @@ public class DrawingCanvas extends JComponent implements Runnable{
 
 		//if distance between centres of particles is less than sum of radii then collision happens	
 		if(c1c2<=r1r2){ 
+			// cr.resolveCollision(p1,p2);
+			particleCollisionResolution(p1,p2);
+			// p1.lastCollision = p2;
+			// p2.lastCollision = p1;
 			return true;
 		}
 		else{
@@ -154,18 +166,73 @@ public class DrawingCanvas extends JComponent implements Runnable{
 
 	public void particleCollisionResolution(Particle p1, Particle p2){
 
-		float u1x = p1.vx;
-		float u1y = p1.vy;
-		float u2x = p2.vx;
-		float u2y = p2.vy;
+		// if((p1.lastCollision != p2) && (p2.lastCollision != p1)){
+			float u1x = p1.vx;
+			float u1y = p1.vy;
+			float u2x = p2.vx;
+			float u2y = p2.vy;
 
-		p1.vx = (u1x*(p1.mass-p2.mass)+2*p2.mass*u2x)/(p1.mass+p2.mass);
-		p1.vy = (u1y*(p1.mass-p2.mass)+2*p2.mass*u2y)/(p1.mass+p2.mass);
+			float dist = (float)(p1.calcDist(p2.cx,p2.cy));
+			float overlap = (dist-p1.radius-p2.radius)/2;
 
-		p2.vx = (u2x*(p2.mass-p1.mass)+2*p1.mass*u1x)/(p1.mass+p2.mass);
-		p2.vy = (u2y*(p2.mass-p1.mass)+2*p1.mass*u1y)/(p1.mass+p2.mass);
+			p1.px -= overlap*(p1.cx-p2.cx)/dist;
+			p1.py -= overlap*(p1.cy-p2.cy)/dist;
+
+			p2.px += overlap*(p1.cx-p2.cx)/dist;
+			p2.py += overlap*(p1.cy-p2.cy)/dist;
+
+			float xVelocityDiff = p1.vx - p2.vx;
+        	float yVelocityDiff = p1.vy - p2.vy;
+
+    		float xDist = p2.cx - p1.cx;
+    		float yDist = p2.cy - p1.cy;
+
+    		if (xVelocityDiff * xDist + yVelocityDiff * yDist >= 0){ 
+				p1.vx = (u1x*(p1.mass-p2.mass)+2*p2.mass*u2x)/(p1.mass+p2.mass);
+				p1.vy = (u1y*(p1.mass-p2.mass)+2*p2.mass*u2y)/(p1.mass+p2.mass);
+
+				p2.vx = (u2x*(p2.mass-p1.mass)+2*p1.mass*u1x)/(p1.mass+p2.mass);
+				p2.vy = (u2y*(p2.mass-p1.mass)+2*p1.mass*u1y)/(p1.mass+p2.mass);
+			}
+
+			capSpeed(p1);
+			capSpeed(p2);
+		//}
 	}
 
+	public void capSpeed(Particle p){
+		if(p.vx>(p.maxSpeedComp)){
+			p.vx = (p.maxSpeedComp);
+		}
+		if(p.vy>(p.maxSpeedComp)){
+			p.vy = (p.maxSpeedComp);
+		}
+		p.calcColor();
+	}
+
+	public void cool(){
+		for(int i=0; i<particleNumber;i++){
+			if (particles[i].vx *0.95 > 5){
+				particles[i].vx *= 0.95;
+			}
+				
+			if (particles[i].vy *0.95 > 5){
+				particles[i].vy *= 0.95;
+			}
+
+		}
+	}
+	public void heat(){
+		for(int i=0; i<particleNumber;i++){
+			if (particles[i].vx *1.05 < 29){
+				particles[i].vx *= 1.05;
+			}
+				
+			if (particles[i].vy *1.05 < 29){
+				particles[i].vy *= 1.05;
+			}
+		}
+	}
 	// public void checkParticleCollision(Particle[] particles){
 
 	// 	for(int i=0;i<particleNumber;i++){

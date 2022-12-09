@@ -1,0 +1,4 @@
+/Users/utkarshverma/Desktop/JavaParticlePhysics/mysql-connector-j-8.0.31.jar
+
+
+java -cp .:$HOME//Users/utkarshverma/Desktop/JavaParticlePhysics/mysql-connector-j-8.0.31.jar JavaJDBC
